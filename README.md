@@ -94,13 +94,10 @@ ng serve
   </div>
 </div>
 ```
+
 หากหน้าเว็บแสดงผลโดยมีสไตล์ มีสี และจัดกึ่งกลางตามคลาสของ Tailwind แสดงว่าการติดตั้งสมบูรณ์!
-```
 
-
-ขั้นตอนการสร้าง Component, การตั้งค่า Router และการสร้าง Service สำหรับเรียก API โดยอิงจาก Angular เวอร์ชันใหม่ (Standalone Components) ซึ่งเป็นค่าเริ่มต้นของ Angular
-
----
+## ขั้นตอนการสร้าง Component, การตั้งค่า Router และการสร้าง Service สำหรับเรียก API โดยอิงจาก Angular เวอร์ชันใหม่ (Standalone Components) 
 
 ### Step 1: เปิดใช้งาน `HttpClient` ในโปรเจกต์
 ก่อนที่เราจะเรียก API ได้ เราต้องตั้งค่าให้ Angular รู้จักระบบ HTTP ก่อน
