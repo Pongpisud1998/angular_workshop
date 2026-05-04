@@ -96,3 +96,168 @@ ng serve
 ```
 หากหน้าเว็บแสดงผลโดยมีสไตล์ มีสี และจัดกึ่งกลางตามคลาสของ Tailwind แสดงว่าการติดตั้งสมบูรณ์!
 ```
+
+
+ขั้นตอนการสร้าง Component, การตั้งค่า Router และการสร้าง Service สำหรับเรียก API โดยอิงจาก Angular เวอร์ชันใหม่ (Standalone Components) ซึ่งเป็นค่าเริ่มต้นของ Angular
+
+---
+
+### Step 1: เปิดใช้งาน `HttpClient` ในโปรเจกต์
+ก่อนที่เราจะเรียก API ได้ เราต้องตั้งค่าให้ Angular รู้จักระบบ HTTP ก่อน
+
+เปิดไฟล์ `src/app/app.config.ts` และเพิ่ม `provideHttpClient()` ลงไป:
+
+```typescript
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+// 1. Import provideHttpClient
+import { provideHttpClient } from '@angular/common/http'; 
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }), 
+    provideRouter(routes),
+    // 2. เพิ่มเข้าไปใน providers
+    provideHttpClient() 
+  ]
+};
+```
+
+---
+
+### Step 2: สร้าง Service สำหรับเรียก API
+Service จะทำหน้าที่จัดการข้อมูลและคุยกับเซิร์ฟเวอร์หลังบ้าน (Backend)
+
+1. รันคำสั่งนี้ใน Terminal เพื่อสร้าง Service:
+```bash
+ng generate service services/api
+```
+
+2. เปิดไฟล์ `src/app/services/api.service.ts` แล้วเขียนโค้ดสำหรับดึงข้อมูล:
+```typescript
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ApiService {
+  // Inject HttpClient แบบใหม่
+  private http = inject(HttpClient); 
+  private apiUrl = 'https://jsonplaceholder.typicode.com/users';
+
+  // ฟังก์ชันสำหรับดึงข้อมูล Users
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
+  }
+}
+```
+
+---
+
+### Step 3: สร้าง Component สำหรับแสดงผล
+ตอนนี้เราจะสร้างหน้าจอเพื่อเอาข้อมูลจาก Service มาแสดง
+
+1. รันคำสั่งสร้าง Component:
+```bash
+ng generate component components/user-list
+```
+
+2. **เขียนโค้ดหลังบ้าน (TypeScript):** เปิดไฟล์ `src/app/components/user-list/user-list.component.ts`
+```typescript
+import { Component, OnInit, inject } from '@angular/core';
+import { ApiService } from '../../services/api.service';
+
+@Component({
+  selector: 'app-user-list',
+  standalone: true,
+  imports: [], // ไม่ต้อง import CommonModule แล้วใน Angular ใหม่
+  templateUrl: './user-list.component.html',
+})
+export class UserListComponent implements OnInit {
+  // Inject Service เข้ามาใช้งาน
+  private apiService = inject(ApiService);
+  
+  // ตัวแปรเก็บข้อมูลที่จะเอาไปแสดงใน HTML
+  users: any[] = [];
+
+  ngOnInit() {
+    this.fetchUsers();
+  }
+
+  fetchUsers() {
+    this.apiService.getUsers().subscribe({
+      next: (data) => {
+        this.users = data;
+      },
+      error: (error) => {
+        console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
+      }
+    });
+  }
+}
+```
+
+3. **เขียนโค้ดหน้าบ้าน (HTML):** เปิดไฟล์ `src/app/components/user-list/user-list.component.html` และใส่โค้ดแสดงผลพร้อม Tailwind CSS
+```html
+<div class="p-6 max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-6 text-gray-800">รายชื่อผู้ใช้งานระบบ (API Data)</h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- ใช้ @for ซึ่งเป็น Control Flow แบบใหม่ของ Angular 17+ -->
+    @for (user of users; track user.id) {
+      <div class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow">
+        <h3 class="text-lg font-semibold text-blue-600">{{ user.name }}</h3>
+        <p class="text-gray-600 flex items-center mt-2">
+          <span class="font-medium mr-2">อีเมล:</span> {{ user.email }}
+        </p>
+        <p class="text-gray-600 flex items-center mt-1">
+          <span class="font-medium mr-2">บริษัท:</span> {{ user.company.name }}
+        </p>
+      </div>
+    } @empty {
+      <div class="col-span-full text-center py-8 text-gray-500">
+        กำลังโหลดข้อมูล...
+      </div>
+    }
+  </div>
+</div>
+```
+
+---
+
+### Step 4: ตั้งค่า Router (การนำทาง)
+เชื่อมโยง URL เข้ากับ Component ที่เราเพิ่งสร้าง
+
+1. เปิดไฟล์ `src/app/app.routes.ts` และเพิ่มเส้นทาง (Route):
+```typescript
+import { Routes } from '@angular/router';
+import { UserListComponent } from './components/user-list/user-list.component';
+
+export const routes: Routes = [
+  // ถ้าเข้า path '/users' ให้เปิดหน้า UserListComponent
+  { path: 'users', component: UserListComponent },
+  // ถ้าเข้ามาที่หน้าแรกเปล่าๆ ให้ redirect ไปที่ '/users'
+  { path: '', redirectTo: 'users', pathMatch: 'full' }
+];
+```
+
+2. เตรียมพื้นที่แสดงผลในแอปหลัก: เปิดไฟล์ `src/app/app.component.html` ลบของเดิมทิ้งให้หมด แล้วใส่ `<router-outlet>` พร้อมเมนูนำทาง (Navbar) เล็กๆ:
+```html
+<!-- Navbar แบบง่ายๆ ด้วย Tailwind -->
+<nav class="bg-blue-600 p-4 text-white shadow-md">
+  <div class="container mx-auto flex gap-4">
+    <a routerLink="/" class="text-xl font-bold">My App</a>
+    <a routerLink="/users" class="hover:text-blue-200 transition-colors pt-1">ผู้ใช้งาน</a>
+  </div>
+</nav>
+
+<!-- จุดที่ Router จะเอา Component มาแทรก -->
+<main class="min-h-screen bg-gray-50">
+  <router-outlet></router-outlet>
+</main>
+```
+
+*(ข้อควรระวัง: สำหรับไฟล์ `app.component.ts` ต้องแน่ใจว่ามีการ `import { RouterOutlet, RouterLink } from '@angular/router';` ไว้ในส่วน `imports: [...]` แล้ว)*
